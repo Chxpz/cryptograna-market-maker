@@ -1,6 +1,32 @@
-# Solana Market Making Bot
+# Cryptograna Market Maker
 
-A high-performance market making bot for Solana DEXes, built with Python and Hummingbot.
+A high-performance, extensible market making and portfolio management system for decentralized exchanges (DEXes). The first implementation targets Solana, but the architecture is designed to support EVM and other networks in the future.
+
+## AI Agent Architecture
+
+Each bot in Cryptograna is an **AI Agent** (Retrieval-Augmented Generation, RAG) trained to operate as a market maker and portfolio manager. Multiple agents can be deployed simultaneously, each managing its own strategy, trading pair, and resource allocation.
+
+### Agent Capabilities
+- **Autonomous Decision-Making:** Each agent can independently analyze market conditions, adjust parameters, and execute trades.
+- **Portfolio Management:** Agents manage their allocated resources and report profits back to the master portfolio.
+- **Multi-Agent Deployment:** The system supports running multiple agents in parallel, each with its own configuration and trading logic.
+
+### Data Available to Each Agent
+Agents have access to the following data for decision-making:
+- **Real-Time Market Data:** Order books, trades, and price feeds from integrated DEXes (e.g., Helius, Jupiter, Orca on Solana; EVM DEXes in the future).
+- **Portfolio State:** Current allocation, available balance, and historical performance for both the master portfolio and the agent's own allocation.
+- **Bot Configuration:** Trading pair, pool address, update interval, risk parameters, and any user-provided notes or constraints.
+- **System Metrics:** Latency, error rates, and health status from the monitoring subsystem.
+- **Historical Trades:** Full trade history, PnL, and win/loss statistics for the agent and the global system.
+- **User/Strategy Inputs:** Manual overrides, special instructions, or AI-guided parameter changes via the dashboard or chat interface.
+
+Agents use this data to:
+- Identify trading opportunities
+- Adjust spreads, order sizes, and risk parameters
+- Rebalance or reallocate funds
+- Pause, stop, or escalate issues based on system health or user intervention
+
+The AI Agent framework is designed to be extensible, allowing for future integration of new data sources, advanced strategies, and cross-chain operation.
 
 ## Features
 
@@ -9,21 +35,26 @@ A high-performance market making bot for Solana DEXes, built with Python and Hum
 - **Trading Strategy**: Pure market making with dynamic parameter adjustment
 - **Hummingbot Controller**: Order execution and parameter management
 - **Monitoring System**: Prometheus metrics and Grafana dashboards
+- **Unified Portfolio Master**: Centralized resource allocation and profit routing
+- **Bot Management**: Create, pause, stop, edit, and monitor bots for any supported network
+- **AI Agent**: Conversational bot creation and management
 
 ### Key Features
-- Real-time market data collection from Helius, Jupiter, and Orca
+- Real-time market data collection (Helius, Jupiter, Orca, and more)
 - Dynamic spread and order size calculation
 - Position tracking and risk management
 - Circuit breakers for drawdown protection
 - Comprehensive monitoring and metrics
 - Automated error recovery
 - Rate limiting and caching
+- Multi-network extensibility (Solana-first, EVM-ready)
 
 ## Prerequisites
 
 - Python 3.9+
 - Docker and Docker Compose
 - Hummingbot instance
+- Node.js 18+
 - API keys for:
   - Helius
   - Jupiter
@@ -33,8 +64,8 @@ A high-performance market making bot for Solana DEXes, built with Python and Hum
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/solana-market-making-bot.git
-cd solana-market-making-bot
+git clone https://github.com/Chxpz/cryptograna-market-maker.git
+cd cryptograna-market-maker
 ```
 
 2. Create and activate a virtual environment:
@@ -92,134 +123,79 @@ The bot is configured through environment variables. Key settings include:
 - Access Grafana dashboard at http://localhost:3000
 - View Prometheus metrics at http://localhost:9090
 
-## Monitoring
+## Architecture Overview
 
-The bot provides comprehensive monitoring through:
+- **Portfolio Master**: Controls balance, allocation, profit routing, and withdrawals.
+- **Bots**: Independent instances, each with its own config and allocated resources.
+- **Decision Module**: AI/algorithm that selects assets, adjusts parameters, and reallocates resources.
+- **User Interface**: Dashboard for monitoring, bot creation, and portfolio overview.
+- **BFF (Backend for Frontend)**: Single API layer for all frontend/backend communication.
 
-### Metrics
-- Order metrics (placed, filled, cancelled)
-- Position metrics (size, value, PnL)
-- Market metrics (spread, volatility, liquidity)
-- API latency
-- Error counts
+## Example Use Cases
+- Run the system fully autonomously, only withdrawing profits periodically.
+- Manually create a bot for a new promising pair, allocating part of the master portfolio.
+- Monitor the performance of each bot and the overall portfolio in real time.
 
-### Health Checks
-- Component health status
-- API connectivity
-- Data validation
-- Error tracking
+# API Documentation
 
-### Alerts
-- Circuit breaker triggers
-- Error thresholds
-- Performance degradation
-- API issues
+All frontend/backend communication is handled via the BFF API. Below are the endpoints, methods, parameters, and expected responses.
 
-## Error Recovery
+## System Settings
+- **GET /admin/settings**
+  - Returns: `SystemSettings`
+  - Description: Get current system settings (limits, intervals, risk, etc)
+- **PUT /admin/settings**
+  - Body: `SystemSettings`
+  - Returns: 200 OK
+  - Description: Update system settings
 
-The bot implements automatic error recovery for:
-- API connection issues
-- Data validation failures
-- Parameter calculation errors
-- Order execution failures
+## System Logs
+- **GET /admin/logs**
+  - Returns: `SystemLog[]`
+  - Description: Get recent system logs
+- **POST /admin/logs/clear**
+  - Returns: 200 OK
+  - Description: Clear all system logs
 
-## Development
+## Fund Management
+- **GET /admin/funds/summary**
+  - Returns: `FundSummary`
+  - Description: Get total, available, and allocated funds
+- **GET /admin/funds/transactions**
+  - Returns: `FundTransaction[]`
+  - Description: Get recent fund transactions
+- **POST /admin/funds/deposit**
+  - Body: `{ amount: number }`
+  - Returns: 200 OK
+  - Description: Deposit funds into the system
+- **POST /admin/funds/withdraw**
+  - Body: `{ amount: number }`
+  - Returns: 200 OK
+  - Description: Withdraw funds from the system
+- **POST /admin/funds/transfer**
+  - Body: `{ from: string, to: string, amount: number }`
+  - Returns: 200 OK
+  - Description: Transfer funds between bots or accounts
 
-### Project Structure
-```
-.
-├── src/
-│   ├── collector/         # Market data collection
-│   ├── decision/          # Trading strategy
-│   ├── monitoring/        # Metrics and monitoring
-│   └── main.py           # Main trading loop
-├── tests/                # Test suite
-├── scripts/              # Utility scripts
-└── docker/              # Docker configuration
-```
-
-### Running Tests
-```bash
-pytest tests/
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Hummingbot for the trading infrastructure
-- Helius, Jupiter, and Orca for market data
-- Prometheus and Grafana for monitoring
-
-# Cryptograna Market Maker's Dashboard
-
-## Visão Geral
-
-O Cryptograna é um sistema de market making e gestão de portfólio para criptoativos, projetado para operar de forma **totalmente autônoma** ou com **supervisão/intervenção manual opcional**. O objetivo é maximizar o lucro e a eficiência operacional, minimizando a necessidade de intervenção humana.
-
-### Modos de Operação
-
-#### 1. Modo 100% Autônomo
-- O sistema gerencia um **portfólio único de recursos** (master portfolio).
-- Aloca recursos dinamicamente entre múltiplos bots, cada um operando pares e estratégias distintas.
-- Identifica oportunidades, escolhe ativos, ajusta parâmetros do Hummingbot e executa operações visando o maior lucro possível.
-- Lucros obtidos por cada bot são automaticamente repassados para a conta principal (master), de onde podem ser sacados.
-- **Nenhuma intervenção manual é necessária**: o sistema aprende, executa, realoca e reporta tudo sozinho.
-
-#### 2. Supervisão e Intervenção Manual Opcional
-- O portfólio único e a lógica de repasses são mantidos.
-- O usuário pode, a qualquer momento, criar manualmente um novo bot para operar um par específico em uma DEX, informando:
-  - O endereço do pool correspondente aos ativos.
-  - Parâmetros não-decisórios (ex: limites, frequência de atualização, etc).
-- O racional de operação (estratégia, ajustes, decisões) continua sendo do sistema.
-- O usuário tem **visão clara** do portfólio, dos bots ativos, dos lucros e pode acompanhar ou intervir na criação de bots.
-
-### Diferenciais
-- **Gestão centralizada de recursos**: todos os bots operam a partir de um portfólio master, com alocação dinâmica.
-- **Repasses automáticos de lucro**: bots transferem ganhos para a conta principal.
-- **Criação manual de bots**: flexibilidade para o usuário explorar pares/DEXes de interesse.
-- **Transparência e controle**: dashboards detalhados, logs, e visão clara do que está acontecendo.
-
-## Arquitetura
-- **Portfolio Master**: controla saldo, alocação, repasses e saque.
-- **Bots**: instâncias independentes, cada uma com sua configuração e recursos alocados.
-- **Módulo de Decisão**: IA/algoritmo que escolhe ativos, ajusta parâmetros e realoca recursos.
-- **Interface de Usuário**: dashboard para acompanhamento, criação de bots e visão do portfólio.
-
-## Exemplos de Uso
-- Deixar o sistema rodando 100% sozinho, apenas sacando lucros periodicamente.
-- Criar manualmente um bot para um novo par promissor, alocando parte do portfólio master.
-- Acompanhar a performance de cada bot e do portfólio geral em tempo real.
+## Types
+- `SystemSettings`: `{ maxBots: number, maxAllocationPerBot: number, updateInterval: number, riskLevel: 'low'|'medium'|'high', autoReinvest: boolean, emergencyStop: boolean }`
+- `SystemLog`: `{ timestamp: string, level: 'info'|'warning'|'error', message: string }`
+- `FundSummary`: `{ totalBalance: number, availableFunds: number, allocatedFunds: number }`
+- `FundTransaction`: `{ id: string, timestamp: string, type: 'deposit'|'withdrawal'|'transfer', amount: number, status: 'pending'|'completed'|'failed', from: string, to: string }`
 
 # Technical Roadmap & TODO
 
-This section tracks the remaining work to bring the Cryptograna Market Maker system to full production readiness. Each card below is a major technical milestone or module. Update this as the project evolves.
+This section tracks the remaining work to bring the Cryptograna Market Maker system to full production readiness. Update as the project evolves.
 
 ---
 
-## 1. Frontend/Backend Integration
-- [ ] Connect all frontend components to real backend endpoints via the BFF API (`src/api/bff.ts`).
-- [ ] Remove all mock data and ensure all data is loaded dynamically.
-- [ ] Implement error/loading/empty states everywhere (already started in Admin Panel).
-- [ ] Add optimistic UI and feedback for all user actions (e.g., saving settings, fund transfers).
-
-## 2. Backend for Frontend (BFF) Implementation
+## 1. Backend for Frontend (BFF) Implementation
 - [ ] Implement a BFF service (Node.js/Express, FastAPI, or similar) that exposes all endpoints needed by the frontend.
 - [ ] BFF should aggregate, validate, and format data from the core backend, bots, and portfolio modules.
 - [ ] Add authentication and authorization middleware.
 - [ ] Provide mock endpoints for local frontend development.
 
-## 3. Core Backend Modules
+## 2. Core Backend Modules
 - [ ] Portfolio Master: resource allocation, profit routing, withdrawals.
 - [ ] Bot Management: create, pause, stop, edit, remove bots; track status and config.
 - [ ] Trade Execution: connect to Hummingbot, manage orders, handle errors.
@@ -227,17 +203,17 @@ This section tracks the remaining work to bring the Cryptograna Market Maker sys
 - [ ] Logging & Auditing: system logs, user actions, error tracking.
 - [ ] Fund Management: deposits, withdrawals, transfers, transaction history.
 
-## 4. AI Agent Integration
+## 3. AI Agent Integration
 - [ ] Implement backend logic for the AI agent (bot creation, Q&A, troubleshooting).
 - [ ] Connect frontend chat terminals to real AI agent endpoints.
 - [ ] Add context awareness and memory to the agent for multi-step flows.
 
-## 5. Admin & Security
+## 4. Admin & Security
 - [ ] Complete Admin Panel: system settings, logs, fund management, user management.
 - [ ] Add authentication (JWT, OAuth, etc.) and role-based access control.
 - [ ] Implement audit trails for all admin/user actions.
 
-## 6. Testing & Quality Assurance
+## 5. Testing & Quality Assurance
 - [ ] Add unit and integration tests for all backend modules.
 - [ ] Add frontend tests (React Testing Library, Cypress, etc.).
 - [ ] End-to-end tests for critical user flows.
