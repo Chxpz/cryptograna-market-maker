@@ -209,9 +209,9 @@ This section tracks the remaining work to bring the Cryptograna Market Maker sys
 - [ ] Add context awareness and memory to the agent for multi-step flows.
 
 ## 4. Admin & Security
-- [ ] Complete Admin Panel: system settings, logs, fund management, user management.
 - [ ] Add authentication (JWT, OAuth, etc.) and role-based access control.
 - [ ] Implement audit trails for all admin/user actions.
+- [ ] User management endpoints and UI.
 
 ## 5. Testing & Quality Assurance
 - [ ] Add unit and integration tests for all backend modules.
