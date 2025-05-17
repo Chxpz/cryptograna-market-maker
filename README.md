@@ -215,3 +215,99 @@ python src/main.py
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Roadmap
+
+### Completed Tasks ✅
+1. Project Structure and Setup
+   - Initialized git repository
+   - Created basic project structure
+   - Set up .gitignore with appropriate exclusions
+   - Created comprehensive README.md
+
+2. Environment Configuration
+   - Created detailed .env.example with all necessary configurations
+   - Added configuration for external services (Helius, Jupiter, Orca)
+   - Added trading parameters and risk management settings
+   - Added monitoring and analysis parameters
+
+3. Market Analysis System
+   - Implemented base analyzer interface
+   - Created technical analyzer with multiple indicators
+   - Implemented fundamental analyzer with market metrics
+   - Added sentiment analyzer with social and news analysis
+   - Created liquidity analyzer with depth and spread analysis
+   - Implemented risk analyzer with comprehensive risk metrics
+   - Built market analyzer to combine all analysis methods
+
+### In Progress 🚧
+1. Data Collection System
+   - Implementing multi-source data collection
+   - Setting up real-time data processing
+   - Configuring data storage systems
+
+2. Trading Strategies
+   - Implementing market making strategy
+   - Developing arbitrage detection
+   - Creating liquidity provision logic
+
+3. Monitoring System
+   - Setting up Prometheus metrics
+   - Implementing performance tracking
+   - Creating analysis dashboards
+
+### Upcoming Tasks 📋
+1. Testing and Validation
+   - Create unit tests for all analyzers
+   - Implement integration tests
+   - Add performance benchmarks
+   - Create test data sets
+
+2. Documentation
+   - Add API documentation
+   - Create user guides
+   - Document deployment procedures
+   - Add troubleshooting guides
+
+3. Performance Optimization
+   - Optimize data processing pipeline
+   - Improve analysis algorithms
+   - Enhance caching mechanisms
+   - Reduce latency in decision making
+
+4. Security Enhancements
+   - Implement API key rotation
+   - Add rate limiting
+   - Enhance error handling
+   - Add security monitoring
+
+5. Deployment
+   - Create Docker configuration
+   - Set up CI/CD pipeline
+   - Add deployment scripts
+   - Create monitoring dashboards
+
+6. Additional Features
+   - Add support for more DEXes
+   - Implement additional trading strategies
+   - Create backtesting framework
+   - Add machine learning models for prediction
+
+### Future Considerations 🔮
+1. Advanced Features
+   - Cross-chain arbitrage
+   - Flash loan integration
+   - MEV protection
+   - Advanced order types
+
+2. Community Features
+   - Strategy marketplace
+   - Community metrics
+   - Social trading features
+   - Performance sharing
+
+3. Enterprise Features
+   - Multi-account support
+   - Advanced reporting
+   - Compliance tools
+   - Institutional features
