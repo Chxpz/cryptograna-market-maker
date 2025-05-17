@@ -200,3 +200,48 @@ O Cryptograna é um sistema de market making e gestão de portfólio para cripto
 - Deixar o sistema rodando 100% sozinho, apenas sacando lucros periodicamente.
 - Criar manualmente um bot para um novo par promissor, alocando parte do portfólio master.
 - Acompanhar a performance de cada bot e do portfólio geral em tempo real.
+
+# Technical Roadmap & TODO
+
+This section tracks the remaining work to bring the Cryptograna Market Maker system to full production readiness. Each card below is a major technical milestone or module. Update this as the project evolves.
+
+---
+
+## 1. Frontend/Backend Integration
+- [ ] Connect all frontend components to real backend endpoints via the BFF API (`src/api/bff.ts`).
+- [ ] Remove all mock data and ensure all data is loaded dynamically.
+- [ ] Implement error/loading/empty states everywhere (already started in Admin Panel).
+- [ ] Add optimistic UI and feedback for all user actions (e.g., saving settings, fund transfers).
+
+## 2. Backend for Frontend (BFF) Implementation
+- [ ] Implement a BFF service (Node.js/Express, FastAPI, or similar) that exposes all endpoints needed by the frontend.
+- [ ] BFF should aggregate, validate, and format data from the core backend, bots, and portfolio modules.
+- [ ] Add authentication and authorization middleware.
+- [ ] Provide mock endpoints for local frontend development.
+
+## 3. Core Backend Modules
+- [ ] Portfolio Master: resource allocation, profit routing, withdrawals.
+- [ ] Bot Management: create, pause, stop, edit, remove bots; track status and config.
+- [ ] Trade Execution: connect to Hummingbot, manage orders, handle errors.
+- [ ] Analytics: PnL, win/loss, trade history, per-bot and global.
+- [ ] Logging & Auditing: system logs, user actions, error tracking.
+- [ ] Fund Management: deposits, withdrawals, transfers, transaction history.
+
+## 4. AI Agent Integration
+- [ ] Implement backend logic for the AI agent (bot creation, Q&A, troubleshooting).
+- [ ] Connect frontend chat terminals to real AI agent endpoints.
+- [ ] Add context awareness and memory to the agent for multi-step flows.
+
+## 5. Admin & Security
+- [ ] Complete Admin Panel: system settings, logs, fund management, user management.
+- [ ] Add authentication (JWT, OAuth, etc.) and role-based access control.
+- [ ] Implement audit trails for all admin/user actions.
+
+## 6. Testing & Quality Assurance
+- [ ] Add unit and integration tests for all backend modules.
+- [ ] Add frontend tests (React Testing Library, Cypress, etc.).
+- [ ] End-to-end tests for critical user flows.
+
+---
+
+_This section is the source of truth for project progress. Update as you complete or add new features._
