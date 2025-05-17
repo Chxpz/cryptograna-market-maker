@@ -1,10 +1,10 @@
 # Core dependencies
 solana==0.30.2
 anchorpy==0.18.0
-python-dotenv==1.0.0
+python-dotenv==1.0.1
 aiohttp==3.9.3
 asyncio==3.4.3
-websockets>=9.0,<12.0
+websockets==12.0
 redis==5.0.1
 
 # AI/ML dependencies
@@ -29,4 +29,7 @@ pytest-cov==4.1.0
 # Type checking
 mypy==1.8.0
 types-aiohttp==3.9.3
-types-redis==4.6.0.20240106 
+types-redis==4.6.0.20240106
+
+# Added from the code block
+requests==2.31.0 

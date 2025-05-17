@@ -1,9 +1,16 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 
+const sidebarLinks = [
+  { to: "/portfolio", label: "Portfolio Master" },
+  { to: "/bots", label: "Bots" },
+  { to: "/create", label: "Create New Bot" },
+  { to: "/admin", label: "Admin Panel" },
+];
+
 const Layout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-terminal-bg">
+    <div className="min-h-screen bg-terminal-bg flex flex-col">
       {/* Top Navigation */}
       <nav className="bg-card-dark border-b border-terminal-border backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,78 +29,32 @@ const Layout: React.FC = () => {
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-12 gap-4">
-          {/* Left Sidebar */}
-          <div className="col-span-3">
-            <div className="terminal-card space-y-4">
-              <h2 className="text-lg font-semibold text-terminal-accent">Trading Pairs</h2>
-              <div className="space-y-2">
-                <NavLink
-                  to="/"
-                  className={({ isActive }) =>
-                    `terminal-button w-full flex items-center justify-between ${
-                      isActive ? 'border-terminal-accent' : ''
-                    }`
-                  }
-                >
-                  <span>SOL/USDC</span>
-                  <span className="text-xs text-terminal-success">+2.34%</span>
-                </NavLink>
-                <NavLink
-                  to="/orderbook"
-                  className={({ isActive }) =>
-                    `terminal-button w-full flex items-center justify-between ${
-                      isActive ? 'border-terminal-accent' : ''
-                    }`
-                  }
-                >
-                  <span>SOL/USDT</span>
-                  <span className="text-xs text-terminal-error">-0.45%</span>
-                </NavLink>
-                <NavLink
-                  to="/controls"
-                  className={({ isActive }) =>
-                    `terminal-button w-full flex items-center justify-between ${
-                      isActive ? 'border-terminal-accent' : ''
-                    }`
-                  }
-                >
-                  <span>BTC/SOL</span>
-                  <span className="text-xs text-terminal-success">+1.23%</span>
-                </NavLink>
-              </div>
-            </div>
+      <div className="flex flex-1 max-w-7xl mx-auto w-full">
+        {/* Sidebar */}
+        <aside className="w-64 bg-card-dark border-r border-terminal-border py-8 px-4 flex flex-col gap-6">
+          <nav className="flex flex-col gap-2">
+            {sidebarLinks.map(link => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) =>
+                  `terminal-button w-full text-left justify-start ${isActive ? 'border-2 border-terminal-accent bg-terminal-hover text-terminal-accent' : ''}`
+                }
+                end
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
 
-            {/* System Stats */}
-            <div className="terminal-card mt-4">
-              <h2 className="text-lg font-semibold text-terminal-accent mb-4">System Stats</h2>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-terminal-fg/60">CPU Usage</span>
-                  <span className="text-sm">32%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-terminal-fg/60">Memory</span>
-                  <span className="text-sm">1.2GB</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-terminal-fg/60">Uptime</span>
-                  <span className="text-sm">2d 4h 15m</span>
-                </div>
-              </div>
-            </div>
+        {/* Main Content */}
+        <main className="flex-1 py-8 px-6">
+          <div className="terminal-grid rounded-xl p-4 min-h-[70vh]">
+            <Outlet />
           </div>
-
-          {/* Main Content Area */}
-          <div className="col-span-9">
-            <div className="terminal-grid rounded-xl p-4">
-              <Outlet />
-            </div>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

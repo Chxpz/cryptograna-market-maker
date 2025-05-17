@@ -13,14 +13,35 @@ services:
       - QDRANT_URL=http://qdrant:6333
       - POSTGRES_URL=postgresql://postgres:postgres@postgres:5432/market_bot
       - PROMETHEUS_URL=http://prometheus:9090
+      - HUMMINGBOT_URL=http://hummingbot:9000
+      - HUMMINGBOT_API_KEY=${HUMMINGBOT_API_KEY}
     depends_on:
       - redis
       - qdrant
       - postgres
       - prometheus
+      - hummingbot
     volumes:
       - ./src:/app/src
       - ./config:/app/config
+    networks:
+      - bot_network
+
+  hummingbot:
+    image: hummingbot/hummingbot:latest
+    environment:
+      - CONFIG_PASSWORD=${HUMMINGBOT_PASSWORD}
+      - CONFIG_PASSPHRASE=${HUMMINGBOT_PASSPHRASE}
+      - CONFIG_API_KEY=${HUMMINGBOT_API_KEY}
+    volumes:
+      - ./hummingbot/conf:/conf
+      - ./hummingbot/conf/connectors:/conf/connectors
+      - ./hummingbot/conf/strategies:/conf/strategies
+      - ./hummingbot/logs:/logs
+      - ./hummingbot/data:/data
+      - ./hummingbot/scripts:/scripts
+    ports:
+      - "9000:9000"
     networks:
       - bot_network
 

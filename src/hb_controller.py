@@ -1,170 +1,221 @@
 """
-Controlador para o Hummingbot que atualiza parâmetros e monitora execução.
+Hummingbot Controller for managing order execution and strategy parameters.
 """
 import os
-import yaml
+import json
 import logging
 import asyncio
-from typing import Dict, Optional
-from datetime import datetime
 import aiohttp
-from dotenv import load_dotenv
+from typing import Dict, Any, Optional
+from datetime import datetime
 
-# Configuração
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 class HummingbotController:
+    """Manages interaction with Hummingbot for order execution."""
+    
     def __init__(self):
-        self.config_path = os.getenv("HUMMINGBOT_CONFIG_PATH", "/app/hummingbot/conf")
+        self.url = os.getenv("HUMMINGBOT_URL", "http://localhost:9000")
+        self.api_key = os.getenv("HUMMINGBOT_API_KEY")
+        self.connector = os.getenv("HUMMINGBOT_CONNECTOR", "orca")
+        self.market = os.getenv("HUMMINGBOT_MARKET", "SOL-USDC")
         self.strategy = os.getenv("HUMMINGBOT_STRATEGY", "pure_market_making")
-        self.update_interval = int(os.getenv("HUMMINGBOT_UPDATE_INTERVAL", "30"))
         
-        # Configuração do Hummingbot
-        self.config_file = f"{self.config_path}/conf_{self.strategy}_strategy.yml"
-        
-        # Estado atual
-        self.current_params = {}
-        self.last_update = None
+        self.session: Optional[aiohttp.ClientSession] = None
         self.is_running = False
+        self.last_error = None
+        self.error_count = 0
+        self.max_retries = 3
+        
+        # Order tracking
+        self.active_orders = {}
+        self.position = 0.0
+        self.last_update = None
         
     async def start(self):
-        """Inicia o controlador e monitora execução."""
-        self.is_running = True
-        logger.info("Iniciando controlador do Hummingbot")
-        
-        while self.is_running:
-            try:
-                # Verifica status do Hummingbot
-                status = await self._check_status()
-                
-                if not status.get("is_running", False):
-                    logger.warning("Hummingbot não está rodando, tentando reiniciar...")
-                    await self._restart_hummingbot()
-                
-                # Aguarda próximo ciclo
-                await asyncio.sleep(self.update_interval)
-                
-            except Exception as e:
-                logger.error(f"Erro no controlador: {e}")
-                await asyncio.sleep(5)  # Espera antes de tentar novamente
-    
-    async def update_parameters(self, params: Dict):
-        """
-        Atualiza parâmetros da estratégia no Hummingbot.
-        
-        Args:
-            params: Dicionário com novos parâmetros
-                - bid_spread: Spread para ordens de compra
-                - ask_spread: Spread para ordens de venda
-                - order_amount: Tamanho da ordem
-                - inventory_target_base_pct: % alvo de inventory
-        """
+        """Start the controller and initialize connection."""
         try:
-            # Carrega configuração atual
-            current_config = self._load_config()
+            self.session = aiohttp.ClientSession()
+            self.is_running = True
             
-            # Atualiza parâmetros
-            current_config["bid_spread"] = params["bid_spread"]
-            current_config["ask_spread"] = params["ask_spread"]
-            current_config["order_amount"] = params["order_amount"]
-            current_config["inventory_target_base_pct"] = params["inventory_target_base_pct"]
+            # Start strategy
+            await self._start_strategy()
             
-            # Salva nova configuração
-            self._save_config(current_config)
+            # Start order tracking
+            asyncio.create_task(self._track_orders())
             
-            # Atualiza estado
-            self.current_params = params
-            self.last_update = datetime.now()
-            
-            logger.info(f"Parâmetros atualizados: {params}")
-            
-            # Aplica nova configuração no Hummingbot
-            await self._apply_config()
+            logger.info("Hummingbot controller started successfully")
+            return True
             
         except Exception as e:
-            logger.error(f"Erro ao atualizar parâmetros: {e}")
-            raise
-    
-    def _load_config(self) -> Dict:
-        """Carrega configuração atual do arquivo YAML."""
-        try:
-            with open(self.config_file, 'r') as f:
-                return yaml.safe_load(f)
-        except Exception as e:
-            logger.error(f"Erro ao carregar configuração: {e}")
-            return {}
-    
-    def _save_config(self, config: Dict):
-        """Salva configuração no arquivo YAML."""
-        try:
-            with open(self.config_file, 'w') as f:
-                yaml.dump(config, f)
-        except Exception as e:
-            logger.error(f"Erro ao salvar configuração: {e}")
-            raise
-    
-    async def _apply_config(self):
-        """Aplica nova configuração no Hummingbot via API."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    "http://hummingbot:9000/command",
-                    json={"command": "import_config_file", "file": self.config_file}
-                ) as response:
-                    if response.status != 200:
-                        raise Exception(f"Erro ao aplicar configuração: {response.status}")
-                    
-                    # Reinicia estratégia
-                    await session.post(
-                        "http://hummingbot:9000/command",
-                        json={"command": "stop_strategy", "strategy": self.strategy}
-                    )
-                    await asyncio.sleep(1)
-                    await session.post(
-                        "http://hummingbot:9000/command",
-                        json={"command": "start_strategy", "strategy": self.strategy}
-                    )
-                    
-        except Exception as e:
-            logger.error(f"Erro ao aplicar configuração: {e}")
-            raise
-    
-    async def _check_status(self) -> Dict:
-        """Verifica status do Hummingbot via API."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get("http://hummingbot:9000/status") as response:
-                    if response.status == 200:
-                        return await response.json()
-                    return {"is_running": False}
-        except Exception as e:
-            logger.error(f"Erro ao verificar status: {e}")
-            return {"is_running": False}
-    
-    async def _restart_hummingbot(self):
-        """Tenta reiniciar o Hummingbot."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                # Para todas as estratégias
-                await session.post(
-                    "http://hummingbot:9000/command",
-                    json={"command": "stop_all"}
-                )
-                await asyncio.sleep(2)
-                
-                # Inicia estratégia
-                await session.post(
-                    "http://hummingbot:9000/command",
-                    json={"command": "start_strategy", "strategy": self.strategy}
-                )
-                
-                logger.info("Hummingbot reiniciado com sucesso")
-                
-        except Exception as e:
-            logger.error(f"Erro ao reiniciar Hummingbot: {e}")
+            logger.error(f"Failed to start Hummingbot controller: {str(e)}")
+            self.last_error = str(e)
+            return False
     
     async def stop(self):
-        """Para o controlador."""
+        """Stop the controller and clean up resources."""
         self.is_running = False
-        logger.info("Controlador do Hummingbot parado") 
+        
+        try:
+            # Cancel all orders
+            await self._cancel_all_orders()
+            
+            # Stop strategy
+            await self._stop_strategy()
+            
+            # Close session
+            if self.session:
+                await self.session.close()
+                
+            logger.info("Hummingbot controller stopped successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error stopping Hummingbot controller: {str(e)}")
+            return False
+    
+    async def update_parameters(self, params: Dict[str, Any]) -> bool:
+        """
+        Update strategy parameters.
+        
+        Args:
+            params: Dictionary containing strategy parameters
+            
+        Returns:
+            bool: True if update was successful
+        """
+        try:
+            # Validate parameters
+            if not self._validate_parameters(params):
+                logger.error("Invalid parameters")
+                return False
+            
+            # Update strategy parameters
+            endpoint = f"{self.url}/api/v1/strategy/update"
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            
+            data = {
+                "strategy": self.strategy,
+                "parameters": {
+                    "bid_spread": params.get("bid_spread", 0.001),
+                    "ask_spread": params.get("ask_spread", 0.001),
+                    "order_amount": params.get("order_amount", 1.0),
+                    "order_refresh_time": params.get("order_refresh_time", 60),
+                    "inventory_skew_enabled": params.get("inventory_skew_enabled", True),
+                    "target_base_pct": params.get("target_base_pct", 0.5)
+                }
+            }
+            
+            async with self.session.post(endpoint, json=data, headers=headers) as response:
+                if response.status != 200:
+                    logger.error(f"Failed to update parameters: {await response.text()}")
+                    return False
+                    
+                self.last_update = datetime.utcnow()
+                logger.info("Strategy parameters updated successfully")
+                return True
+            if not self.session:
+                raise Exception("Controller not started")
+                
+            # Extract parameters
+            params = recommendations.get("parameters", {})
+            spread = params.get("spread", 0.001)
+            position_size = params.get("position_size", 0.0)
+            
+            # Prepare configuration
+            config = {
+                "strategy": "pure_market_making",
+                "exchange": "orca",
+                "trading_pair": os.getenv("TRADING_PAIR", "SOL-USDC"),
+                "bid_spread": spread,
+                "ask_spread": spread,
+                "order_amount": position_size,
+                "order_refresh_time": 30,
+                "max_order_age": 1800,
+                "order_refresh_tolerance_pct": 0.1,
+                "cancel_order_wait_time": 60,
+                "enable_order_filled_stop_cancellation": True,
+                "filled_order_delay": 60,
+                "inventory_skew_enabled": True,
+                "inventory_target_base_pct": 0.5,
+                "inventory_range_multiplier": 0.1,
+                "volatility_buffer_size": 30,
+                "volatility_interval": 60,
+                "volatility_to_spread_multiplier": 1.0,
+                "max_spread": float(os.getenv("MAX_SPREAD", "0.05")),
+                "min_spread": float(os.getenv("MIN_SPREAD", "0.001")),
+                "status_report_interval": 900
+            }
+            
+            # Update configuration
+            async with self.session.post(
+                f"{self.hb_url}/config",
+                json=config
+            ) as response:
+                if response.status == 200:
+                    logger.info("Hummingbot parameters updated successfully")
+                    return True
+                else:
+                    error = await response.text()
+                    logger.error(f"Failed to update parameters: {error}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error updating parameters: {str(e)}")
+            return False
+            
+    async def get_status(self) -> Dict[str, Any]:
+        """Get current Hummingbot status."""
+        try:
+            if not self.session:
+                raise Exception("Controller not started")
+                
+            async with self.session.get(f"{self.hb_url}/status") as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    error = await response.text()
+                    logger.error(f"Failed to get status: {error}")
+                    return {}
+                    
+        except Exception as e:
+            logger.error(f"Error getting status: {str(e)}")
+            return {}
+            
+    async def start_strategy(self) -> bool:
+        """Start the trading strategy."""
+        try:
+            if not self.session:
+                raise Exception("Controller not started")
+                
+            async with self.session.post(f"{self.hb_url}/start") as response:
+                if response.status == 200:
+                    logger.info("Strategy started successfully")
+                    return True
+                else:
+                    error = await response.text()
+                    logger.error(f"Failed to start strategy: {error}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error starting strategy: {str(e)}")
+            return False
+            
+    async def stop_strategy(self) -> bool:
+        """Stop the trading strategy."""
+        try:
+            if not self.session:
+                raise Exception("Controller not started")
+                
+            async with self.session.post(f"{self.hb_url}/stop") as response:
+                if response.status == 200:
+                    logger.info("Strategy stopped successfully")
+                    return True
+                else:
+                    error = await response.text()
+                    logger.error(f"Failed to stop strategy: {error}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error stopping strategy: {str(e)}")
+            return False 

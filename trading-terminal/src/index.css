@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-terminal-bg text-terminal-fg font-mono;
+    background-image: none;
+    font-size: 16px;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer components {
+  .terminal-card {
+    @apply bg-card-dark border border-terminal-border rounded-xl p-6 shadow-card backdrop-blur-sm text-terminal-fg;
+    transition: box-shadow 0.2s;
+  }
+  
+  .terminal-button {
+    @apply px-5 py-2 rounded-xl bg-button-dark text-terminal-fg font-semibold shadow-soft transition-all duration-200 border border-terminal-border;
+    background: none;
+  }
+  .terminal-button:hover, .terminal-button:focus {
+    @apply border-terminal-accent bg-button-dark-hover;
+    color: #fff;
+    box-shadow: 0 4px 16px 0 rgba(59, 130, 246, 0.10);
+  }
+  .terminal-button-danger {
+    @apply px-5 py-2 rounded-xl bg-terminal-error text-white font-semibold border border-terminal-border transition-all duration-200;
+    background: none;
+  }
+  .terminal-button-danger:hover, .terminal-button-danger:focus {
+    @apply border-terminal-error bg-terminal-error;
+    color: #fff;
+    box-shadow: 0 4px 16px 0 rgba(244, 63, 94, 0.12);
+  }
+  .terminal-input {
+    @apply bg-terminal-input border border-terminal-border rounded-xl px-3 py-2 text-terminal-fg focus:outline-none focus:ring-2 focus:ring-terminal-accent focus:border-transparent placeholder-gray-400 transition-all duration-200;
+    font-size: 1rem;
+  }
+  .terminal-select {
+    @apply bg-terminal-input border border-terminal-border rounded-xl px-3 py-2 text-terminal-fg focus:outline-none focus:ring-2 focus:ring-terminal-accent focus:border-transparent transition-all duration-200;
+    font-size: 1rem;
+  }
+  .terminal-table {
+    @apply w-full border-collapse;
+  }
+  .terminal-table th {
+    @apply bg-card-dark text-terminal-fg px-4 py-2 text-left border-b border-terminal-border font-medium tracking-wide;
+  }
+  .terminal-table td {
+    @apply px-4 py-2 border-b border-terminal-border transition-colors duration-200 text-terminal-fg;
+  }
+  .terminal-table tr:hover td {
+    @apply bg-terminal-hover;
+  }
+  .terminal-badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium tracking-wide bg-terminal-hover text-terminal-fg border border-terminal-border;
+  }
+  .terminal-badge-success {
+    @apply bg-terminal-success bg-opacity-10 text-terminal-success;
+  }
+  .terminal-badge-warning {
+    @apply bg-terminal-warning bg-opacity-10 text-terminal-warning;
+  }
+  .terminal-badge-error {
+    @apply bg-terminal-error bg-opacity-10 text-terminal-error;
+  }
+  .terminal-grid {
+    @apply bg-terminal-grid bg-opacity-50 rounded-xl;
+    background-image: linear-gradient(to right, rgba(35, 38, 58, 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(35, 38, 58, 0.12) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .terminal-glow {
+    @apply relative;
+  }
+  .terminal-glow::after {
+    content: '';
+    @apply absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300;
+    box-shadow: 0 0 8px 0 rgba(59, 130, 246, 0.08);
+  }
+  .terminal-glow:hover::after {
+    @apply opacity-10;
+  }
+}
