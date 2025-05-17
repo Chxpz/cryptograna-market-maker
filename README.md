@@ -160,3 +160,43 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Hummingbot for the trading infrastructure
 - Helius, Jupiter, and Orca for market data
 - Prometheus and Grafana for monitoring
+
+# Cryptograna Market Maker's Dashboard
+
+## Visão Geral
+
+O Cryptograna é um sistema de market making e gestão de portfólio para criptoativos, projetado para operar de forma **totalmente autônoma** ou com **supervisão/intervenção manual opcional**. O objetivo é maximizar o lucro e a eficiência operacional, minimizando a necessidade de intervenção humana.
+
+### Modos de Operação
+
+#### 1. Modo 100% Autônomo
+- O sistema gerencia um **portfólio único de recursos** (master portfolio).
+- Aloca recursos dinamicamente entre múltiplos bots, cada um operando pares e estratégias distintas.
+- Identifica oportunidades, escolhe ativos, ajusta parâmetros do Hummingbot e executa operações visando o maior lucro possível.
+- Lucros obtidos por cada bot são automaticamente repassados para a conta principal (master), de onde podem ser sacados.
+- **Nenhuma intervenção manual é necessária**: o sistema aprende, executa, realoca e reporta tudo sozinho.
+
+#### 2. Supervisão e Intervenção Manual Opcional
+- O portfólio único e a lógica de repasses são mantidos.
+- O usuário pode, a qualquer momento, criar manualmente um novo bot para operar um par específico em uma DEX, informando:
+  - O endereço do pool correspondente aos ativos.
+  - Parâmetros não-decisórios (ex: limites, frequência de atualização, etc).
+- O racional de operação (estratégia, ajustes, decisões) continua sendo do sistema.
+- O usuário tem **visão clara** do portfólio, dos bots ativos, dos lucros e pode acompanhar ou intervir na criação de bots.
+
+### Diferenciais
+- **Gestão centralizada de recursos**: todos os bots operam a partir de um portfólio master, com alocação dinâmica.
+- **Repasses automáticos de lucro**: bots transferem ganhos para a conta principal.
+- **Criação manual de bots**: flexibilidade para o usuário explorar pares/DEXes de interesse.
+- **Transparência e controle**: dashboards detalhados, logs, e visão clara do que está acontecendo.
+
+## Arquitetura
+- **Portfolio Master**: controla saldo, alocação, repasses e saque.
+- **Bots**: instâncias independentes, cada uma com sua configuração e recursos alocados.
+- **Módulo de Decisão**: IA/algoritmo que escolhe ativos, ajusta parâmetros e realoca recursos.
+- **Interface de Usuário**: dashboard para acompanhamento, criação de bots e visão do portfólio.
+
+## Exemplos de Uso
+- Deixar o sistema rodando 100% sozinho, apenas sacando lucros periodicamente.
+- Criar manualmente um bot para um novo par promissor, alocando parte do portfólio master.
+- Acompanhar a performance de cada bot e do portfólio geral em tempo real.
