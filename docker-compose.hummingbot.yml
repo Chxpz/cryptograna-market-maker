@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  hummingbot:
+    image: hummingbot/hummingbot:latest
+    container_name: hummingbot
+    volumes:
+      - ./hummingbot/conf:/app/hummingbot/conf
+      - ./hummingbot/logs:/app/hummingbot/logs
+      - ./hummingbot/scripts:/app/hummingbot/scripts
+      - ./hummingbot/conf/conf_pure_market_making_strategy.yml:/app/hummingbot/conf/conf_pure_market_making_strategy.yml
+    environment:
+      - CONFIG_PASSWORD=your_password_here
+    ports:
+      - "9000:9000"  # Hummingbot API
+    restart: unless-stopped
+    command: >
+      /bin/bash -c "
+        /app/hummingbot/start.sh &&
+        /app/hummingbot/start.sh --script start_multiple_strategies.py"
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    external: true 

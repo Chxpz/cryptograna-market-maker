@@ -1,0 +1,32 @@
+# Core dependencies
+solana==0.30.2
+anchorpy==0.18.0
+python-dotenv==1.0.0
+aiohttp==3.9.3
+asyncio==3.4.3
+websockets>=9.0,<12.0
+redis==5.0.1
+
+# AI/ML dependencies
+openai==1.12.0
+numpy==1.26.4
+pandas==2.2.1
+scikit-learn==1.4.1.post1
+qdrant-client==1.7.3
+
+# Monitoring and logging
+prometheus-client==0.19.0
+python-json-logger==2.0.7
+
+# Hummingbot integration
+pyyaml==6.0.1
+
+# Testing
+pytest==8.0.2
+pytest-asyncio==0.23.5
+pytest-cov==4.1.0
+
+# Type checking
+mypy==1.8.0
+types-aiohttp==3.9.3
+types-redis==4.6.0.20240106 
