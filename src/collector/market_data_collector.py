@@ -1,177 +1,176 @@
 """
-Coletor de dados de mercado com armazenamento vetorial usando Qdrant.
+Market data collector that fetches data from multiple sources.
 """
 import os
-import time
 import logging
+import aiohttp
+import asyncio
+from typing import Dict, Any, List
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import numpy as np
-from qdrant_client import QdrantClient
-from qdrant_client.http import models
-from qdrant_client.http.models import Distance, VectorParams
-import requests
-from dotenv import load_dotenv
 
-# Configuração
-load_dotenv()
 logger = logging.getLogger(__name__)
 
 class MarketDataCollector:
+    """Collects market data from various sources."""
+    
     def __init__(self):
-        # Inicializa cliente Qdrant
-        self.qdrant = QdrantClient(
-            url=os.getenv("QDRANT_URL", "http://localhost:6333")
-        )
-        
-        # Configuração da coleção
-        self.collection_name = "market_data"
-        self.vector_size = 128  # Tamanho do vetor de features
-        
-        # Inicializa a coleção se não existir
-        self._init_collection()
-        
-        # Configuração da API Helius
         self.helius_api_key = os.getenv("HELIUS_API_KEY")
-        self.helius_url = f"https://api.helius.xyz/v0/token-metadata?api-key={self.helius_api_key}"
+        self.jupiter_api_key = os.getenv("JUPITER_API_KEY")
+        self.orca_api_key = os.getenv("ORCA_API_KEY")
         
-    def _init_collection(self):
-        """Inicializa a coleção no Qdrant se não existir."""
-        collections = self.qdrant.get_collections().collections
-        exists = any(col.name == self.collection_name for col in collections)
+        # API endpoints
+        self.helius_url = "https://api.helius.xyz/v0"
+        self.jupiter_url = "https://quote-api.jup.ag/v6"
+        self.orca_url = "https://api.orca.so"
         
-        if not exists:
-            self.qdrant.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(size=self.vector_size, distance=Distance.COSINE)
-            )
-            logger.info(f"Coleção {self.collection_name} criada no Qdrant")
-    
-    def _create_market_vector(self, data: Dict) -> np.ndarray:
-        """
-        Converte dados de mercado em um vetor de features.
-        Em produção, isso poderia usar um modelo de embedding treinado.
-        """
-        # Features básicas: preço, volume, volatilidade, etc
-        features = [
-            data.get('price', 0),
-            data.get('volume', 0),
-            data.get('volatility', 0),
-            data.get('bid_spread', 0),
-            data.get('ask_spread', 0),
-            # ... mais features
-        ]
+        # Trading pair
+        self.pair = os.getenv("PAIR", "SOL-USDC")
+        self.base_token, self.quote_token = self.pair.split("-")
         
-        # Padding para o tamanho do vetor
-        features = features + [0] * (self.vector_size - len(features))
-        return np.array(features, dtype=np.float32)
-    
-    async def collect_market_data(self) -> Dict:
+        # Cache for recent data
+        self.cache = {}
+        self.cache_ttl = 30  # seconds
+        
+    async def collect_market_data(self) -> Dict[str, Any]:
         """
-        Coleta dados de mercado via Helius API.
-        Em produção, isso coletaria dados reais de múltiplas fontes.
+        Collect market data from all sources.
+        
+        Returns:
+            Dictionary containing combined market data
         """
         try:
-            # Exemplo de coleta de dados do Helius
-            response = requests.get(self.helius_url)
-            data = response.json()
+            # Collect data concurrently
+            price_data, order_book, trades = await asyncio.gather(
+                self._get_price_data(),
+                self._get_order_book(),
+                self._get_recent_trades()
+            )
             
-            # Processa e estrutura os dados
+            # Combine data
             market_data = {
-                'timestamp': datetime.now().isoformat(),
-                'price': float(data.get('price', 0)),
-                'volume': float(data.get('volume', 0)),
-                'volatility': self._calculate_volatility(data),
-                'bid_spread': float(data.get('bid_spread', 0)),
-                'ask_spread': float(data.get('ask_spread', 0)),
+                "timestamp": datetime.utcnow().isoformat(),
+                "pair": self.pair,
+                "price": price_data["price"],
+                "volume_24h": price_data["volume_24h"],
+                "order_book": order_book,
+                "trades": trades,
+                "liquidity_pools": await self._get_liquidity_pools(),
+                "market_cap": price_data.get("market_cap", 0),
+                "total_supply": price_data.get("total_supply", 0),
+                "circulating_supply": price_data.get("circulating_supply", 0)
             }
             
-            # Converte para vetor e armazena
-            vector = self._create_market_vector(market_data)
-            self._store_data(market_data, vector)
+            # Cache the data
+            self.cache = {
+                "data": market_data,
+                "timestamp": datetime.utcnow()
+            }
             
             return market_data
             
         except Exception as e:
-            logger.error(f"Erro ao coletar dados: {e}")
-            return {}
+            logger.error(f"Error collecting market data: {str(e)}")
+            return self._get_cached_data()
     
-    def _calculate_volatility(self, data: Dict) -> float:
-        """Calcula volatilidade baseado em dados históricos."""
-        # Implementação simplificada
-        return float(data.get('price_change_24h', 0)) / 100
-    
-    def _store_data(self, data: Dict, vector: np.ndarray):
-        """Armazena dados e vetor no Qdrant."""
+    async def _get_price_data(self) -> Dict[str, Any]:
+        """Get price data from Jupiter."""
         try:
-            self.qdrant.upsert(
-                collection_name=self.collection_name,
-                points=[
-                    models.PointStruct(
-                        id=int(time.time() * 1000),  # Timestamp como ID
-                        vector=vector.tolist(),
-                        payload=data
-                    )
-                ]
-            )
+            async with aiohttp.ClientSession() as session:
+                # Get quote
+                quote_url = f"{self.jupiter_url}/quote"
+                params = {
+                    "inputMint": self._get_token_mint(self.base_token),
+                    "outputMint": self._get_token_mint(self.quote_token),
+                    "amount": "1000000",  # 1 SOL
+                    "slippageBps": 50
+                }
+                
+                async with session.get(quote_url, params=params) as response:
+                    if response.status == 200:
+                        quote_data = await response.json()
+                        return {
+                            "price": float(quote_data["outAmount"]) / 1000000,
+                            "volume_24h": float(quote_data.get("volume24h", 0))
+                        }
+                    else:
+                        raise Exception(f"Jupiter API error: {response.status}")
+                        
         except Exception as e:
-            logger.error(f"Erro ao armazenar dados: {e}")
+            logger.error(f"Error getting price data: {str(e)}")
+            return {"price": 0, "volume_24h": 0}
     
-    async def get_similar_market_conditions(self, current_data: Dict, limit: int = 5) -> List[Dict]:
-        """
-        Busca condições de mercado similares no histórico.
-        Útil para o modelo de IA tomar decisões baseadas em padrões históricos.
-        """
+    async def _get_order_book(self) -> Dict[str, List[Dict[str, float]]]:
+        """Get order book data from Orca."""
         try:
-            # Converte dados atuais em vetor
-            vector = self._create_market_vector(current_data)
-            
-            # Busca pontos similares
-            search_result = self.qdrant.search(
-                collection_name=self.collection_name,
-                query_vector=vector.tolist(),
-                limit=limit
-            )
-            
-            # Retorna os dados históricos mais similares
-            return [point.payload for point in search_result]
-            
+            async with aiohttp.ClientSession() as session:
+                headers = {"Authorization": f"Bearer {self.orca_api_key}"}
+                url = f"{self.orca_url}/v1/orderbook/{self.pair}"
+                
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return {
+                            "bids": data["bids"],
+                            "asks": data["asks"]
+                        }
+                    else:
+                        raise Exception(f"Orca API error: {response.status}")
+                        
         except Exception as e:
-            logger.error(f"Erro ao buscar dados similares: {e}")
+            logger.error(f"Error getting order book: {str(e)}")
+            return {"bids": [], "asks": []}
+    
+    async def _get_recent_trades(self) -> List[Dict[str, Any]]:
+        """Get recent trades from Helius."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                url = f"{self.helius_url}/trades"
+                params = {
+                    "api-key": self.helius_api_key,
+                    "pair": self.pair,
+                    "limit": 100
+                }
+                
+                async with session.get(url, params=params) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        raise Exception(f"Helius API error: {response.status}")
+                        
+        except Exception as e:
+            logger.error(f"Error getting recent trades: {str(e)}")
             return []
     
-    async def get_historical_data(self, 
-                                start_time: Optional[datetime] = None,
-                                end_time: Optional[datetime] = None,
-                                limit: int = 100) -> List[Dict]:
-        """
-        Busca dados históricos em um período específico.
-        """
+    async def _get_liquidity_pools(self) -> List[Dict[str, Any]]:
+        """Get liquidity pool data from Orca."""
         try:
-            # Constrói filtro de tempo
-            filter_condition = None
-            if start_time or end_time:
-                filter_condition = models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="timestamp",
-                            range=models.Range(
-                                gt=start_time.isoformat() if start_time else None,
-                                lt=end_time.isoformat() if end_time else None
-                            )
-                        )
-                    ]
-                )
-            
-            # Busca pontos
-            search_result = self.qdrant.scroll(
-                collection_name=self.collection_name,
-                filter=filter_condition,
-                limit=limit
-            )
-            
-            return [point.payload for point in search_result[0]]
-            
+            async with aiohttp.ClientSession() as session:
+                headers = {"Authorization": f"Bearer {self.orca_api_key}"}
+                url = f"{self.orca_url}/v1/pools/{self.pair}"
+                
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        raise Exception(f"Orca API error: {response.status}")
+                        
         except Exception as e:
-            logger.error(f"Erro ao buscar dados históricos: {e}")
-            return [] 
+            logger.error(f"Error getting liquidity pools: {str(e)}")
+            return []
+    
+    def _get_cached_data(self) -> Dict[str, Any]:
+        """Get cached data if available and not expired."""
+        if "data" in self.cache:
+            cache_age = datetime.utcnow() - self.cache["timestamp"]
+            if cache_age.total_seconds() < self.cache_ttl:
+                return self.cache["data"]
+        return {}
+    
+    def _get_token_mint(self, token: str) -> str:
+        """Get token mint address."""
+        # This is a simplified version - in production, you'd want to maintain a proper token registry
+        token_mints = {
+            "SOL": "So11111111111111111111111111111111111111112",
+            "USDC": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        }
+        return token_mints.get(token, "") 

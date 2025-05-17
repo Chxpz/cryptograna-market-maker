@@ -2,34 +2,58 @@ version: '3.8'
 
 services:
   bot:
-    build: .
-    env_file: .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - HELIUS_API_KEY=${HELIUS_API_KEY}
+      - JUPITER_API_KEY=${JUPITER_API_KEY}
+      - ORCA_API_KEY=${ORCA_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - QDRANT_URL=http://qdrant:6333
+      - POSTGRES_URL=postgresql://postgres:postgres@postgres:5432/market_bot
+      - PROMETHEUS_URL=http://prometheus:9090
     depends_on:
       - redis
       - qdrant
+      - postgres
+      - prometheus
     volumes:
-      - ./:/app
+      - ./src:/app/src
+      - ./config:/app/config
     networks:
-      - bot-network
+      - bot_network
 
   redis:
-    image: redis:7.2-alpine
+    image: redis:7-alpine
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - redis_data:/data
     networks:
-      - bot-network
+      - bot_network
 
   qdrant:
     image: qdrant/qdrant:latest
     ports:
       - "6333:6333"
-      - "6334:6334"
     volumes:
-      - qdrant-data:/qdrant/storage
+      - qdrant_data:/qdrant/storage
     networks:
-      - bot-network
+      - bot_network
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=market_bot
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bot_network
 
   prometheus:
     image: prom/prometheus:latest
@@ -37,27 +61,30 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
+      - prometheus_data:/prometheus
     networks:
-      - bot-network
+      - bot_network
 
   grafana:
     image: grafana/grafana:latest
     ports:
       - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - grafana-data:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
     networks:
-      - bot-network
+      - bot_network
 
 volumes:
-  redis-data:
-  qdrant-data:
-  prometheus-data:
-  grafana-data:
+  redis_data:
+  qdrant_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
-  bot-network:
+  bot_network:
     driver: bridge 
